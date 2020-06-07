@@ -32,7 +32,7 @@ tcmap2pydict(TCMAP *map)
             return NULL;
         }
         
-        value = PyString_FromString(vstr);
+        value = PyUnicode_FromString(vstr);
         
         if (value == NULL)
         {
@@ -82,10 +82,10 @@ pydict2tcmap(PyObject *dict)
     
     while (PyDict_Next(dict, &pos, &key, &value))
     {
-        if (!PyString_Check(value))
+        if (!PyBytes_Check(value))
         {
             tcmapdel(map);
-            PyErr_SetString(PyExc_TypeError, "All values must be strings.");
+            PyErr_SetString(PyExc_TypeError, "All values must be bytes.");
             return NULL;
         }
         
@@ -153,7 +153,7 @@ TableQuery_dealloc(TableQuery *self)
         tctdbqrydel(self->q);
         Py_END_ALLOW_THREADS
     }
-    self->ob_type->tp_free(self);
+    Py_TYPE(self)->tp_free(self);
 }
 
 
@@ -275,7 +275,7 @@ TableQuery_search(TableQuery *self)
         for (i=0; i<n; i++)
         {
             vbuf = tclistval(results, i, &vsiz);
-            val = PyString_FromStringAndSize(vbuf, vsiz);
+            val = PyBytes_FromStringAndSize(vbuf, vsiz);
             PyList_SET_ITEM(pylist, i, val);
             
             vsiz = 0;
@@ -309,7 +309,7 @@ TableQuery_hint(TableQuery *self)
     hint = tctdbqryhint(self->q);
     Py_END_ALLOW_THREADS
     
-    return PyString_FromString(hint);
+    return PyUnicode_FromString(hint);
 }
 
 
@@ -384,8 +384,7 @@ static PyMethodDef TableQuery_methods[] =
 
 
 static PyTypeObject TableQueryType = {
-  PyObject_HEAD_INIT(NULL)
-  0,                                           /* ob_size */
+  PyVarObject_HEAD_INIT(NULL, 0)
   "tokyocabinet.table.TableQuery",             /* tp_name */
   sizeof(TableQuery),                          /* tp_basicsize */
   0,                                           /* tp_itemsize */
@@ -444,7 +443,7 @@ Table_dealloc(Table *self)
         tctdbdel(self->db);
         Py_END_ALLOW_THREADS
     }
-    self->ob_type->tp_free(self);
+    Py_TYPE(self)->tp_free(self);
 }
 
 
@@ -852,7 +851,7 @@ Table_iternext(Table *self)
         }
         return NULL;
     }
-    pykey = PyString_FromString(key);
+    pykey = PyUnicode_FromString(key);
     tcfree((void *)key);
     return pykey;
 }
@@ -895,7 +894,7 @@ Table_fwmkeys(Table *self, PyObject *args, PyObject *kwargs)
             PyObject *value;
             
             vbuf = tclistval(list, i, &vsiz);
-            value = PyString_FromStringAndSize(vbuf, vsiz);
+            value = PyBytes_FromStringAndSize(vbuf, vsiz);
             PyList_SET_ITEM(pylist, i, value);
         }
     }
@@ -920,7 +919,7 @@ Table_addint(Table *self, PyObject *args)
     result = tctdbaddint(self->db, kbuf, ksiz, num);
     Py_END_ALLOW_THREADS
     
-    return PyInt_FromLong((long) result);
+    return PyLong_FromLong((long) result);
 }
 
 
@@ -1114,7 +1113,7 @@ Table_path(Table *self)
         Py_RETURN_NONE;
     }
     
-    return PyString_FromString(path);
+    return PyUnicode_FromString(path);
 }
 
 
@@ -1279,7 +1278,7 @@ Table_metasearch(Table *self, PyObject *args)
         for (i=0; i<n; i++)
         {
             vbuf = tclistval(results, i, &vsiz);
-            val = PyString_FromStringAndSize(vbuf, vsiz);
+            val = PyBytes_FromStringAndSize(vbuf, vsiz);
             PyList_SET_ITEM(pyresults, i, val);
             
             vsiz = 0;
@@ -1312,12 +1311,12 @@ Table_subscript(Table *self, PyObject *key)
     TCMAP *cols;
     PyObject *value;
     
-    if (!PyString_Check(key))
+    if (!PyBytes_Check(key))
     {
-        PyErr_SetString(PyExc_TypeError, "Expected key to be a string.");
+        PyErr_SetString(PyExc_TypeError, "Expected key to be bytes.");
     }
     
-    PyString_AsStringAndSize(key, &kbuf, &ksiz);
+    PyBytes_AsStringAndSize(key, &kbuf, &ksiz);
     
     Py_BEGIN_ALLOW_THREADS
     cols = tctdbget(self->db, kbuf, ksiz);
@@ -1348,12 +1347,12 @@ Table_ass_subscript(Table *self, PyObject *key, PyObject *value)
     Py_ssize_t ksiz;
     TCMAP *cols;
     
-    if (!PyString_Check(key))
+    if (!PyBytes_Check(key))
     {
         PyErr_SetString(PyExc_TypeError, "Expected key to be a string.");
     }
     
-    PyString_AsStringAndSize(key, &kbuf, &ksiz);
+    PyBytes_AsStringAndSize(key, &kbuf, &ksiz);
     
     cols = pydict2tcmap(value);
     
@@ -1397,13 +1396,13 @@ Table_contains(Table *self, PyObject *value)
     Py_ssize_t ksiz;
     Py_ssize_t vsiz;
     
-    if (!PyString_Check(value))
+    if (!PyBytes_Check(value))
     {
-        PyErr_SetString(PyExc_ValueError, "Expected value to be a string");
+        PyErr_SetString(PyExc_ValueError, "Expected value to be bytes");
         return -1;
     }
     
-    PyString_AsStringAndSize(value, &kbuf, &ksiz);
+    PyBytes_AsStringAndSize(value, &kbuf, &ksiz);
     if (!kbuf)
     {
         return -1;
@@ -1619,8 +1618,7 @@ static PyMethodDef Table_methods[] =
 
 
 static PyTypeObject TableType = {
-  PyObject_HEAD_INIT(NULL)
-  0,                                           /* ob_size */
+  PyVarObject_HEAD_INIT(NULL, 0)
   "tokyocabinet.table.Table",                  /* tp_name */
   sizeof(Table),                               /* tp_basicsize */
   0,                                           /* tp_itemsize */
@@ -1666,19 +1664,30 @@ static PyTypeObject TableType = {
 #ifndef PyMODINIT_FUNC
 #define PyMODINIT_FUNC void
 #endif
+
+static struct PyModuleDef moduledef = {
+    PyModuleDef_HEAD_INIT,
+    "tokyocabinet.table",                   /* m_name */
+    "Tokyo cabinet Table database wrapper", /* m_doc */
+    -1,                                     /* m_size */
+    Table_methods,                       /* m_methods */
+    NULL,                                   /* m_reload */
+    NULL,                                   /* m_traverse */
+    NULL,                                   /* m_clear */
+    NULL,                                   /* m_free */
+};
+
+
 PyMODINIT_FUNC
-inittable(void)
+PyInittable(void)
 {
     PyObject *m;
     
-    m = Py_InitModule3(
-            "tokyocabinet.table", NULL, 
-            "Tokyo cabinet Table database wrapper"
-    );
+    m = PyModule_Create(&moduledef);
     
     if (!m)
     {
-        return;
+        return NULL;
     }
     
     TableError = PyErr_NewException("tokyocabinet.table.error", NULL, NULL);
@@ -1687,12 +1696,12 @@ inittable(void)
     
     if (PyType_Ready(&TableType) < 0)
     {
-        return;
+        return NULL;
     }
     
     if (PyType_Ready(&TableQueryType) < 0)
     {
-        return;
+        return NULL;
     }
     
     
@@ -1753,4 +1762,5 @@ inittable(void)
     ADD_INT_CONSTANT(m, TDBMSUNION);
     ADD_INT_CONSTANT(m, TDBMSISECT);
     ADD_INT_CONSTANT(m, TDBMSDIFF);
+    return m;
 }

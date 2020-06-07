@@ -51,7 +51,7 @@ Hash_dealloc(Hash *self)
         tchdbdel(self->db);
         Py_END_ALLOW_THREADS
     }
-    self->ob_type->tp_free(self);
+    Py_TYPE(self)->tp_free(self);
 }
 
 
@@ -373,7 +373,7 @@ Hash_get(Hash *self, PyObject *args, PyObject *kwargs)
         Py_RETURN_NONE;
     }
     
-    value = PyString_FromStringAndSize(vbuf, vsiz);
+    value = PyBytes_FromStringAndSize(vbuf, vsiz);
     free(vbuf);
     
     if (!value)
@@ -442,7 +442,7 @@ Hash_fwmkeys(Hash *self, PyObject *args, PyObject *kwargs)
             PyObject *value;
             
             vbuf = tclistval(list, i, &vsiz);
-            value = PyString_FromStringAndSize(vbuf, vsiz);
+            value = PyBytes_FromStringAndSize(vbuf, vsiz);
             PyList_SET_ITEM(pylist, i, value);
         }
     }
@@ -467,7 +467,7 @@ Hash_addint(Hash *self, PyObject *args)
     result = tchdbaddint(self->db, kbuf, ksiz, num);
     Py_END_ALLOW_THREADS
     
-    return PyInt_FromLong((long) result);
+    return PyLong_FromLong((long) result);
 }
 
 
@@ -661,7 +661,7 @@ Hash_path(Hash *self)
         Py_RETURN_NONE;
     }
     
-    return PyString_FromString(path);
+    return PyUnicode_FromString(path);
 }
 
 
@@ -713,13 +713,13 @@ Hash_subscript(Hash *self, PyObject *key)
     PyObject *value;
     int tcvsiz;
     
-    if (!PyString_Check(key))
+    if (!PyBytes_Check(key))
     {
-        PyErr_SetString(PyExc_ValueError, "Expected key to be a string.");
+        PyErr_SetString(PyExc_ValueError, "Expected key to be bytes.");
         return NULL;
     }
     
-    PyString_AsStringAndSize(key, &kbuf, &ksiz);
+    PyBytes_AsStringAndSize(key, &kbuf, &ksiz);
     
     if (!kbuf)
     {
@@ -737,7 +737,7 @@ Hash_subscript(Hash *self, PyObject *key)
         return NULL;
     }
     
-    value = PyString_FromStringAndSize(vbuf, vsiz);
+    value = PyBytes_FromStringAndSize(vbuf, vsiz);
     free(vbuf);
     
     if (!value)
@@ -756,25 +756,25 @@ Hash_ass_subscript(Hash *self, PyObject *key, PyObject *value)
     char *kbuf, *vbuf;
     Py_ssize_t ksiz, vsiz;
     
-    if (!PyString_Check(key))
+    if (!PyBytes_Check(key))
     {
-        PyErr_SetString(PyExc_ValueError, "Expected key to be a string.");
+        PyErr_SetString(PyExc_ValueError, "Expected key to be bytes.");
         return -1;
     }
     
-    if (!PyString_Check(value))
+    if (!PyBytes_Check(value))
     {
-        PyErr_SetString(PyExc_ValueError, "Expected value to be a string.");
+        PyErr_SetString(PyExc_ValueError, "Expected value to be bytes.");
         return -1;
     }
     
-    PyString_AsStringAndSize(key, &kbuf, &ksiz);
+    PyBytes_AsStringAndSize(key, &kbuf, &ksiz);
     if (!kbuf)
     {
         return -1;
     }
     
-    PyString_AsStringAndSize(value, &vbuf, &vsiz);
+    PyBytes_AsStringAndSize(value, &vbuf, &vsiz);
     if (!vbuf)
     {
         return -1;
@@ -813,13 +813,13 @@ Hash_contains(Hash *self, PyObject *value)
     Py_ssize_t ksiz;
     Py_ssize_t vsiz;
     
-    if (!PyString_Check(value))
+    if (!PyBytes_Check(value))
     {
-        PyErr_SetString(PyExc_ValueError, "Expected value to be a string");
+        PyErr_SetString(PyExc_ValueError, "Expected value to be bytes");
         return -1;
     }
     
-    PyString_AsStringAndSize(value, &kbuf, &ksiz);
+    PyBytes_AsStringAndSize(value, &kbuf, &ksiz);
     if (!kbuf)
     {
         return -1;
@@ -1005,8 +1005,7 @@ static PyMethodDef Hash_methods[] =
 
 
 static PyTypeObject HashType = {
-  PyObject_HEAD_INIT(NULL)
-  0,                                           /* ob_size */
+  PyVarObject_HEAD_INIT(NULL, 0)
   "tokyocabinet.hash.Hash",                  /* tp_name */
   sizeof(Hash),                               /* tp_basicsize */
   0,                                           /* tp_itemsize */
@@ -1052,19 +1051,30 @@ static PyTypeObject HashType = {
 #ifndef PyMODINIT_FUNC
 #define PyMODINIT_FUNC void
 #endif
+
+static struct PyModuleDef moduledef = {
+    PyModuleDef_HEAD_INIT,
+    "tokyocabinet.hash" ,                   /* m_name */
+    "Tokyo cabinet hash table wrapper",     /* m_doc */
+    -1,                                     /* m_size */
+    Hash_methods,                          /* m_methods */
+    NULL,                                   /* m_reload */
+    NULL,                                   /* m_traverse */
+    NULL,                                   /* m_clear */
+    NULL,                                   /* m_free */
+};
+
+
 PyMODINIT_FUNC
-inithash(void)
+PyInithash(void)
 {
     PyObject *m;
     
-    m = Py_InitModule3(
-            "tokyocabinet.hash", NULL, 
-            "Tokyo cabinet hash table wrapper"
-    );
+    m = PyModule_Create(&moduledef);
     
     if (!m)
     {
-        return;
+        return NULL;
     }
     
     HashError = PyErr_NewException("tokyocabinet.hash.error", NULL, NULL);
@@ -1073,7 +1083,7 @@ inithash(void)
     
     if (PyType_Ready(&HashType) < 0)
     {
-        return;
+        return NULL;
     }
     
     
@@ -1092,4 +1102,5 @@ inithash(void)
     ADD_INT_CONSTANT(m, HDBTDEFLATE);
     ADD_INT_CONSTANT(m, HDBTBZIP);
     ADD_INT_CONSTANT(m, HDBTTCBS);
+    return m;
 }

@@ -62,7 +62,7 @@ BTreeCursor_dealloc(BTreeCursor *self)
         tcbdbcurdel(self->cur);
         Py_END_ALLOW_THREADS
     }
-    self->ob_type->tp_free(self);
+    Py_TYPE(self)->tp_free(self);
 }
 
 
@@ -252,7 +252,7 @@ BTreeCursor_key(BTreeCursor *self)
         return NULL;
     }
     
-    key = PyString_FromStringAndSize(kbuf, ksiz);
+    key = PyBytes_FromStringAndSize(kbuf, ksiz);
     free(kbuf);
     
     if (!key)
@@ -281,7 +281,7 @@ BTreeCursor_val(BTreeCursor *self)
         return NULL;
     }
     
-    val = PyString_FromStringAndSize(vbuf, vsiz);
+    val = PyBytes_FromStringAndSize(vbuf, vsiz);
     free(vbuf);
     
     if (!val)
@@ -399,8 +399,7 @@ static PyMethodDef BTreeCursor_methods[] =
 
 
 static PyTypeObject BTreeCursorType = {
-  PyObject_HEAD_INIT(NULL)
-  0,                                           /* ob_size */
+  PyVarObject_HEAD_INIT(NULL, 0)
   "tokyocabinet.btree.BTreeCursor",            /* tp_name */
   sizeof(BTreeCursor),                         /* tp_basicsize */
   0,                                           /* tp_itemsize */
@@ -460,7 +459,7 @@ BTree_dealloc(BTree *self)
         tcbdbdel(self->db);
         Py_END_ALLOW_THREADS
     }
-    self->ob_type->tp_free(self);
+    Py_TYPE(self)->tp_free(self);
 }
 
 
@@ -948,7 +947,7 @@ BTree_get(BTree *self, PyObject *args, PyObject *kwargs)
         Py_RETURN_NONE;
     }
     
-    value = PyString_FromStringAndSize(vbuf, vsiz);
+    value = PyBytes_FromStringAndSize(vbuf, vsiz);
     free(vbuf);
     
     if (!value)
@@ -994,7 +993,7 @@ BTree_getdup(BTree *self, PyObject *args)
             PyObject *value;
             
             vbuf = tclistval(list, i, &vsiz);
-            value = PyString_FromStringAndSize(vbuf, vsiz);
+            value = PyBytes_FromStringAndSize(vbuf, vsiz);
             PyList_SET_ITEM(pylist, i, value);
         }
     }
@@ -1080,7 +1079,7 @@ BTree_range(BTree *self, PyObject *args, PyObject *kwargs)
             PyObject *value;
             
             vbuf = tclistval(list, i, &vsiz);
-            value = PyString_FromStringAndSize(vbuf, vsiz);
+            value = PyBytes_FromStringAndSize(vbuf, vsiz);
             PyList_SET_ITEM(pylist, i, value);
         }
     }
@@ -1128,7 +1127,7 @@ BTree_fwmkeys(BTree *self, PyObject *args, PyObject *kwargs)
             PyObject *value;
             
             vbuf = tclistval(list, i, &vsiz);
-            value = PyString_FromStringAndSize(vbuf, vsiz);
+            value = PyBytes_FromStringAndSize(vbuf, vsiz);
             PyList_SET_ITEM(pylist, i, value);
         }
     }
@@ -1153,7 +1152,7 @@ BTree_addint(BTree *self, PyObject *args)
     result = tcbdbaddint(self->db, kbuf, ksiz, num);
     Py_END_ALLOW_THREADS
     
-    return PyInt_FromLong((long) result);
+    return PyLong_FromLong((long) result);
 }
 
 
@@ -1349,7 +1348,7 @@ BTree_path(BTree *self)
         Py_RETURN_NONE;
     }
     
-    return PyString_FromString(path);
+    return PyUnicode_FromString(path);
 }
 
 
@@ -1421,13 +1420,13 @@ BTree_subscript(BTree *self, PyObject *key)
     PyObject *value;
     int tcvsiz;
     
-    if (!PyString_Check(key))
+    if (!PyBytes_Check(key))
     {
-        PyErr_SetString(PyExc_ValueError, "Expected key to be a string.");
+        PyErr_SetString(PyExc_ValueError, "Expected key to be bytes.");
         return NULL;
     }
     
-    PyString_AsStringAndSize(key, &kbuf, &ksiz);
+    PyBytes_AsStringAndSize(key, &kbuf, &ksiz);
     
     if (!kbuf)
     {
@@ -1445,7 +1444,7 @@ BTree_subscript(BTree *self, PyObject *key)
         return NULL;
     }
     
-    value = PyString_FromStringAndSize(vbuf, vsiz);
+    value = PyBytes_FromStringAndSize(vbuf, vsiz);
     free(vbuf);
     
     if (!value)
@@ -1464,25 +1463,25 @@ BTree_ass_subscript(BTree *self, PyObject *key, PyObject *value)
     char *kbuf, *vbuf;
     Py_ssize_t ksiz, vsiz;
     
-    if (!PyString_Check(key))
+    if (!PyBytes_Check(key))
     {
-        PyErr_SetString(PyExc_ValueError, "Expected key to be a string.");
+        PyErr_SetString(PyExc_ValueError, "Expected key to be bytes.");
         return -1;
     }
     
-    if (!PyString_Check(value))
+    if (!PyBytes_Check(value))
     {
-        PyErr_SetString(PyExc_ValueError, "Expected value to be a string.");
+        PyErr_SetString(PyExc_ValueError, "Expected value to be bytes.");
         return -1;
     }
     
-    PyString_AsStringAndSize(key, &kbuf, &ksiz);
+    PyBytes_AsStringAndSize(key, &kbuf, &ksiz);
     if (!kbuf)
     {
         return -1;
     }
     
-    PyString_AsStringAndSize(value, &vbuf, &vsiz);
+    PyBytes_AsStringAndSize(value, &vbuf, &vsiz);
     if (!vbuf)
     {
         return -1;
@@ -1521,13 +1520,13 @@ BTree_contains(BTree *self, PyObject *value)
     Py_ssize_t ksiz;
     Py_ssize_t vsiz;
     
-    if (!PyString_Check(value))
+    if (!PyBytes_Check(value))
     {
-        PyErr_SetString(PyExc_ValueError, "Expected value to be a string");
+        PyErr_SetString(PyExc_ValueError, "Expected value to be bytes");
         return -1;
     }
     
-    PyString_AsStringAndSize(value, &kbuf, &ksiz);
+    PyBytes_AsStringAndSize(value, &kbuf, &ksiz);
     if (!kbuf)
     {
         return -1;
@@ -1755,8 +1754,7 @@ static PyMethodDef BTree_methods[] =
 
 
 static PyTypeObject BTreeType = {
-  PyObject_HEAD_INIT(NULL)
-  0,                                           /* ob_size */
+  PyVarObject_HEAD_INIT(NULL, 0)
   "tokyocabinet.btree.BTree",                  /* tp_name */
   sizeof(BTree),                               /* tp_basicsize */
   0,                                           /* tp_itemsize */
@@ -1802,19 +1800,29 @@ static PyTypeObject BTreeType = {
 #ifndef PyMODINIT_FUNC
 #define PyMODINIT_FUNC void
 #endif
+
+static struct PyModuleDef moduledef = {
+    PyModuleDef_HEAD_INIT,
+    "tokyocabinet.btree",                   /* m_name */
+    "Tokyo cabinet BTree database wrapper", /* m_doc */
+    -1,                                     /* m_size */
+    BTree_methods,                         /* m_methods */
+    NULL,                                   /* m_reload */
+    NULL,                                   /* m_traverse */
+    NULL,                                   /* m_clear */
+    NULL,                                   /* m_free */
+};
+
 PyMODINIT_FUNC
-initbtree(void)
+PyInitbtree(void)
 {
     PyObject *m;
-    
-    m = Py_InitModule3(
-            "tokyocabinet.btree", NULL, 
-            "Tokyo cabinet BTree database wrapper"
-    );
-    
+
+    m = PyModule_Create(&moduledef);
+
     if (!m)
     {
-        return;
+        return NULL;
     }
     
     BTreeError = PyErr_NewException("tokyocabinet.btree.error", NULL, NULL);
@@ -1823,12 +1831,12 @@ initbtree(void)
     
     if (PyType_Ready(&BTreeType) < 0)
     {
-        return;
+        return NULL;
     }
     
     if (PyType_Ready(&BTreeCursorType) < 0)
     {
-        return;
+        return NULL;
     }
     
     
@@ -1859,4 +1867,5 @@ initbtree(void)
     ADD_INT_CONSTANT(m, BDBCPCURRENT);
     ADD_INT_CONSTANT(m, BDBCPBEFORE);
     ADD_INT_CONSTANT(m, BDBCPAFTER);
+    return m;
 }
